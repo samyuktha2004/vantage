@@ -123,6 +123,16 @@ guestRoutes.get('/api/guest/portal/:token', async (req, res) => {
     // Hotel is full when all blocked rooms are confirmed and at least one room was blocked
     const isHotelFull = hotelRoomsBlocked > 0 && hotelRoomsConfirmed >= hotelRoomsBlocked;
 
+    // Fetch flight inventory and compute isFlightFull
+    const flightInventory = await db
+      .select()
+      .from(groupInventory)
+      .where(and(eq(groupInventory.eventId, guest.eventId), eq(groupInventory.inventoryType, "flight")))
+      .limit(1);
+    const flightSeatsAllocated = Number(flightInventory[0]?.seatsAllocated ?? 0);
+    const flightSeatsConfirmed = Number(flightInventory[0]?.seatsConfirmed ?? 0);
+    const isFlightFull = flightSeatsAllocated > 0 && flightSeatsConfirmed >= flightSeatsAllocated;
+
     // Fetch all hotel options for this event (agent may set up multiple hotels)
     const allHotelBookings = await db
       .select()
@@ -203,6 +213,7 @@ guestRoutes.get('/api/guest/portal/:token', async (req, res) => {
       bleisureRatePerNight,
       usedBudget,
       isHotelFull,
+      isFlightFull,
       primaryHotel,
       hotelOptions,
       labelInclusions,
@@ -636,21 +647,42 @@ guestRoutes.post('/api/guest/:token/itinerary/:eventId/register', async (req, re
         conflicts: [conflict.ev.title],
       });
     }
+    // Use advisory lock per (guestId, itineraryEventId) to avoid duplicate registrations under concurrency
+    const hash32 = (s: string) => {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) {
+        h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+      }
+      return Math.abs(h);
+    };
 
-    // Register guest
-    await db.insert(guestItinerary).values({
-      guestId: guest.id,
-      itineraryEventId: event.id,
-      status: 'attending',
-    });
-    
-    // Update attendee count
-    await db
-      .update(itineraryEvents)
-      .set({
-        currentAttendees: (event.currentAttendees ?? 0) + 1,
-      })
-      .where(eq(itineraryEvents.id, event.id));
+    const key1 = guest.id;
+    const key2 = hash32(String(event.id));
+
+    const client = await (require('./db').pool).connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SELECT pg_advisory_xact_lock($1, $2)', [key1, key2]);
+
+      const existingRes = await client.query('SELECT * FROM guest_itinerary WHERE guest_id = $1 AND itinerary_event_id = $2 LIMIT 1', [guest.id, event.id]);
+      if (existingRes.rows[0]) {
+        await client.query('ROLLBACK');
+        return res.json({ success: true, alreadyRegistered: true });
+      }
+
+      await client.query('INSERT INTO guest_itinerary (guest_id, itinerary_event_id, status) VALUES ($1,$2,$3)', [guest.id, event.id, 'attending']);
+
+      await client.query('UPDATE itinerary_events SET current_attendees = COALESCE(current_attendees,0) + 1 WHERE id = $1', [event.id]);
+
+      await client.query('COMMIT');
+      res.json({ success: true, alreadyRegistered: false });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      console.error('Event registration error:', err);
+      res.status(400).json({ message: 'Failed to register for event' });
+    } finally {
+      client.release();
+    }
     
     res.json({ success: true, conflicts: [] });
     

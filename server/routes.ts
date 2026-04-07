@@ -8,9 +8,9 @@ import bcrypt from "bcryptjs";
 import guestRoutes from "./guest-routes";
 import tboHotelRoutes from "./tbo-hotel-routes";
 import tboFlightRoutes from "./tbo-flight-routes";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { searchHotels } from "./tbo/tboHotelService";
-import { events, hotelBookings, travelOptions, itineraryEvents, guests, labels, perks, labelPerks, guestRequests, bookingLabelInclusions, paymentTransactions } from "@shared/schema";
+import { events, hotelBookings, travelOptions, itineraryEvents, guests, labels, perks, labelPerks, guestRequests, bookingLabelInclusions, paymentTransactions, auditLogs } from "@shared/schema";
 import { eq, and, sql, or } from "drizzle-orm";
 
 // Middleware to get user from session
@@ -1003,14 +1003,66 @@ export async function registerRoutes(
       const eventId = Number(req.params.eventId);
       const auth = await authorizeEventEditor(req, res, eventId);
       if (!auth) return;
-
+      // Use advisory lock per (eventId, email) to serialize concurrent creates without requiring DB indexes.
+      const force = Boolean((req.body as any)?.force);
       const input = api.guests.create.input.parse(req.body);
-      const guest = await storage.createGuest({ ...input, eventId });
-      res.status(201).json(guest);
+
+      // Only agents may force-create duplicates
+      if (force && auth.user.role !== 'agent') {
+        return res.status(403).json({ message: 'Only agents may force-create duplicate guests' });
+      }
+
+      const email = String(input.email || '').toLowerCase();
+      // simple 32-bit hash
+      const hash32 = (s: string) => {
+        let h = 0;
+        for (let i = 0; i < s.length; i++) {
+          h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+        }
+        return Math.abs(h);
+      };
+
+      const key2 = hash32(email);
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query('SELECT pg_advisory_xact_lock($1, $2)', [eventId, key2]);
+
+        // Check existing within same transaction/connection
+        const existingRes = await client.query(`SELECT * FROM guests WHERE event_id = $1 AND lower(email) = $2 LIMIT 1`, [eventId, email]);
+        const existing = existingRes.rows[0];
+        if (existing && !force) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({ message: 'Guest with this email already exists', existing });
+        }
+
+        // Insert using storage helper that uses provided client
+        const guest = await storage.createGuestWithClient(client, { ...input, eventId });
+
+        if (force) {
+          try {
+            await client.query(`INSERT INTO audit_logs (actor_id, action, target_table, target_id, details) VALUES ($1,$2,$3,$4,$5)`, [auth.user.id, 'guest_force_create', 'guests', guest.id, { email: input.email, name: input.name, existing: existing ?? null, eventId }]);
+          } catch (auditErr) {
+            console.error('Failed to write audit log:', auditErr);
+          }
+        }
+
+        await client.query('COMMIT');
+        res.status(201).json(guest);
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
+      }
     } catch (err: any) {
       console.error('[ERROR] Failed to create guest:', err.message || String(err));
       if (err instanceof z.ZodError) {
         res.status(400).json({ message: err.errors[0].message });
+      } else if (err?.code === '23505') {
+        // Postgres unique violation (race condition)
+        res.status(409).json({ message: 'Guest with this email already exists' });
       } else {
         res.status(500).json({ message: err.message || "Internal Server Error" });
       }
@@ -1356,11 +1408,23 @@ export async function registerRoutes(
         },
       ];
       
-      await storage.seedItineraryEvents(sampleEvents);
-      
+      // Avoid inserting duplicates: check existing itinerary items for this event
+      const existingRows = await db.select().from(itineraryEvents).where(eq(itineraryEvents.eventId, eventId));
+      const existingSignatures = new Set(existingRows.map(r => `${r.title}||${new Date(r.startTime).toISOString()}`));
+
+      const toInsert = sampleEvents.filter(ev => {
+        const sig = `${ev.title}||${new Date(ev.startTime).toISOString()}`;
+        return !existingSignatures.has(sig);
+      });
+
+      if (toInsert.length > 0) {
+        await storage.seedItineraryEvents(toInsert);
+      }
+
       res.json({ 
         message: "Itinerary events seeded successfully",
-        count: sampleEvents.length,
+        added: toInsert.length,
+        attempted: sampleEvents.length,
         conflicts: [
           "Dinner Gala (7:00-10:00 PM) overlaps with Cocktail Lounge (7:30-9:00 PM)",
           "Morning Yoga (7:00-8:00 AM) overlaps with Breakfast Buffet (7:30-9:30 AM)",

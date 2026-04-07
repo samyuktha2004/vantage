@@ -172,6 +172,8 @@ export default function EventDetails() {
   // Manual guest creation state
   const [showAddGuestDialog, setShowAddGuestDialog] = useState(false);
   const [isAddingGuest, setIsAddingGuest] = useState(false);
+  const [duplicateGuest, setDuplicateGuest] = useState<any | null>(null);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [newGuestData, setNewGuestData] = useState({
     name: "",
     email: "",
@@ -550,19 +552,35 @@ export default function EventDetails() {
     
     setIsAddingGuest(true);
     try {
-      const response = await fetch(`/api/events/${id}/guests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
+      const makeRequest = async (force = false) => {
+        const body: any = {
           name: newGuestData.name,
           email: newGuestData.email,
           phone: newGuestData.phone || undefined,
           category: newGuestData.category || undefined,
           dietaryRestrictions: newGuestData.dietaryRestrictions || undefined,
           specialRequests: newGuestData.specialRequests || undefined,
-        }),
-      });
+        };
+        if (force) body.force = true;
+        return await fetch(`/api/events/${id}/guests`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(body),
+        });
+      };
+
+      let response = await makeRequest(false);
+
+      // If duplicate detected (email already exists), show override dialog for user decision
+      if (response.status === 409) {
+        const payload = await response.json().catch(() => ({}));
+        const existing = payload.existing;
+        setDuplicateGuest(existing ?? { email: newGuestData.email });
+        setShowDuplicateDialog(true);
+        setIsAddingGuest(false);
+        return;
+      }
 
       if (!response.ok) throw new Error('Failed to add guest');
       
@@ -596,6 +614,7 @@ export default function EventDetails() {
   };
 
   const handleSeedItinerary = async () => {
+    if (isSeedingItinerary) return; // prevent duplicate submissions from rapid clicks
     setIsSeedingItinerary(true);
     try {
       const response = await fetch(`/api/events/${id}/seed-itinerary`, {
@@ -1044,6 +1063,72 @@ export default function EventDetails() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+          {/* Duplicate Guest Override Dialog */}
+          <Dialog open={showDuplicateDialog} onOpenChange={(open) => { if (!open) { setShowDuplicateDialog(false); setDuplicateGuest(null); } }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Duplicate Guest Detected</DialogTitle>
+                <DialogDescription>
+                  A guest with this email already exists — choose to use the existing record or create a new one anyway.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2 py-4">
+                <div>
+                  <Label>Name</Label>
+                  <div className="text-sm">{duplicateGuest?.name ?? "—"}</div>
+                </div>
+                <div>
+                  <Label>Email</Label>
+                  <div className="text-sm">{duplicateGuest?.email}</div>
+                </div>
+                <div>
+                  <Label>Booking ref</Label>
+                  <div className="text-sm">{duplicateGuest?.bookingRef ?? "—"}</div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setShowDuplicateDialog(false); setDuplicateGuest(null); toast({ title: "Using existing guest", description: "No new guest was created." }); }}>
+                  Use Existing
+                </Button>
+                <Button onClick={async () => {
+                  setShowDuplicateDialog(false);
+                  setIsAddingGuest(true);
+                  try {
+                    const body: any = {
+                      name: newGuestData.name,
+                      email: newGuestData.email,
+                      phone: newGuestData.phone || undefined,
+                      category: newGuestData.category || undefined,
+                      dietaryRestrictions: newGuestData.dietaryRestrictions || undefined,
+                      specialRequests: newGuestData.specialRequests || undefined,
+                      force: true,
+                    };
+                    const response = await fetch(`/api/events/${id}/guests`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify(body),
+                    });
+                    if (!response.ok) {
+                      const err = await response.json().catch(() => ({}));
+                      throw new Error(err?.message || 'Failed to add guest');
+                    }
+                    toast({ title: "Guest added", description: `${newGuestData.name} has been added to the guest list` });
+                    setNewGuestData({ name: "", email: "", phone: "", category: "", dietaryRestrictions: "", specialRequests: "" });
+                    setShowAddGuestDialog(false);
+                    await refetchGuests();
+                  } catch (error: any) {
+                    toast({ title: "Failed to add guest", description: error.message, variant: "destructive" });
+                  } finally {
+                    setIsAddingGuest(false);
+                    setDuplicateGuest(null);
+                  }
+                }}>
+                  Create Anyway
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
       {/* Capacity Alert */}
       {hotelBookings && hotelBookings.length > 0 && (

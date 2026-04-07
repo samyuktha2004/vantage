@@ -13,6 +13,9 @@ This folder has one canonical doc per topic to avoid duplication.
 
 - [PRD.md](./PRD.md) — product requirements and acceptance criteria.
 - [USER_FLOWS.md](./USER_FLOWS.md) — role-based and page-level flow map.
+
+**Permissions note:** The canonical role-permission matrix lives in [USER_FLOWS.md — Role Permission Matrix](./USER_FLOWS.md#role-permission-matrix-for-shared-modules). Refer there for authoritative RBAC details; other docs surface only role intent.
+
 - [GUEST_PORTAL_GUIDE.md](./GUEST_PORTAL_GUIDE.md) — guest portal technical guide.
 - [AGENT_GUEST_LINK_GUIDE.md](./AGENT_GUEST_LINK_GUIDE.md) — operational guide for link management.
 

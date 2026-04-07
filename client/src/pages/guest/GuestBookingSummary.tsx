@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Plane, Hotel, ArrowRight, CheckCircle, AlertTriangle, Gift, IndianRupee, Train, Bus } from "lucide-react";
 import { format, differenceInCalendarDays } from "date-fns";
+import { AvailabilityGate } from "@/components/AvailabilityGate";
 
 export default function GuestBookingSummary({ token }: { token: string }) {
   const { data: guestData, isLoading } = useGuestPortal(token);
@@ -72,6 +73,12 @@ export default function GuestBookingSummary({ token }: { token: string }) {
 
   return (
     <GuestLayout step={3} token={token}>
+      <AvailabilityGate
+        isHotelFull={!!guestData.isHotelFull}
+        isFlightFull={!!guestData.isFlightFull}
+        step={3}
+        guestName={guestData.name}
+      >
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center">
@@ -314,6 +321,7 @@ export default function GuestBookingSummary({ token }: { token: string }) {
           </Button>
         </div>
       </div>
+      </AvailabilityGate>
     </GuestLayout>
   );
 }

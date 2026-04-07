@@ -328,6 +328,43 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Create guest using an existing pg client (transactional / advisory lock use)
+  async createGuestWithClient(client: any, guest: InsertGuest): Promise<any> {
+    try {
+      const accessToken = randomUUID();
+      const bookingRef = `GP${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+      let resolvedLabelId = guest.labelId ?? null;
+      if (!resolvedLabelId && guest.category && guest.category.trim()) {
+        const normalizedCategory = guest.category.trim().toLowerCase();
+        const matched = await client.query(
+          `SELECT id FROM labels WHERE event_id = $1 AND lower(name) = $2 LIMIT 1`,
+          [guest.eventId, normalizedCategory]
+        );
+        if (matched.rows[0]) resolvedLabelId = matched.rows[0].id;
+      }
+
+      const guestData = {
+        ...guest,
+        labelId: resolvedLabelId,
+        phone: guest.phone ? String(guest.phone) : null,
+        accessToken,
+        bookingRef,
+      };
+
+      const cols = Object.keys(guestData).map(c => `"${c}"`).join(', ');
+      const vals = Object.values(guestData);
+      const placeholders = vals.map((_, i) => `$${i+1}`).join(', ');
+
+      const insertSql = `INSERT INTO guests (${cols}) VALUES (${placeholders}) RETURNING *`;
+      const res = await client.query(insertSql, vals);
+      return res.rows[0];
+    } catch (err) {
+      console.error('[STORAGE ERROR] createGuestWithClient failed:', err);
+      throw err;
+    }
+  }
+
   async updateGuest(id: number, guest: Partial<InsertGuest>): Promise<Guest | undefined> {
     const [updated] = await db.update(guests).set(guest).where(eq(guests.id, id)).returning();
     return updated;

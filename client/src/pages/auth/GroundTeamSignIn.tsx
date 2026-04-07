@@ -63,15 +63,15 @@ export default function GroundTeamSignIn() {
         throw new Error(err.message || "Could not load assigned event(s)");
       }
 
-      const assignedEvents = await eventRes.json();
-      if (Array.isArray(assignedEvents)) {
-        if (assignedEvents.length === 1) {
-          navigate(`/groundteam/${assignedEvents[0].id}/checkin`);
+      const data = await eventRes.json();
+      if (Array.isArray(data)) {
+        if (data.length === 1) {
+          navigate(`/groundteam/${data[0].id}/checkin`);
         } else {
           navigate(`/groundteam/select`);
         }
-      } else if (assignedEvents?.id) {
-        navigate(`/groundteam/${assignedEvents.id}/checkin`);
+      } else if (data?.id) {
+        navigate(`/groundteam/${data.id}/checkin`);
       } else {
         throw new Error("No assigned event found");
       }

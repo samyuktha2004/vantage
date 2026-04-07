@@ -12,6 +12,7 @@ import { Loader2, Users, Plus, X, CheckCircle2, XCircle, Phone, UtensilsCrossed,
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import { AvailabilityGate } from "@/components/AvailabilityGate";
 
 const MEAL_OPTIONS = [
   { value: "standard", label: "Standard" },
@@ -224,6 +225,12 @@ export default function GuestRSVP({ token }: { token: string }) {
 
   return (
     <GuestLayout step={1} token={token}>
+      <AvailabilityGate
+        isHotelFull={!!guestData.isHotelFull}
+        isFlightFull={!!guestData.isFlightFull}
+        step={1}
+        guestName={guestData.name}
+      >
       <div className="max-w-3xl mx-auto space-y-8">
         {/* Header */}
         <div className="text-center">
@@ -501,6 +508,7 @@ export default function GuestRSVP({ token }: { token: string }) {
           </Button>
         </div>
       </div>
+      </AvailabilityGate>
     </GuestLayout>
   );
 }

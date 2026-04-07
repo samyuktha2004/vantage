@@ -34,12 +34,24 @@ Open:
 - `http://localhost:5000` (default)
 - If macOS port conflict, set `PORT=5001` in `.env` and use `http://localhost:5001`
 
-## 4) Smoke test
+## 4) Automated smoke test (optional)
 
-1. Sign up as Agent.
-2. Create an event.
-3. Add one guest.
-4. Open guest link and confirm portal loads.
+An automated smoke script is included to validate core role flows (agent → client → ground-team). The script is not detailed in the main README; run it from your local checkout as part of setup when you need a quick end-to-end check.
+
+Run from the project root:
+
+```bash
+# Start your dev server first (default port: 5001 on macOS if needed)
+npm run dev
+
+# In a separate terminal, run the smoke script
+npm run smoke
+```
+
+Notes:
+
+- The script is `scripts/smoke.sh` and generates temporary test users and cookie jars in `/tmp`.
+- It is safe to run against local dev only (it creates test data in your connected database).
 
 ## Need deeper setup?
 

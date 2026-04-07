@@ -57,20 +57,13 @@ All planned features implemented. Nomination logic intentionally dropped. See "D
 | Import guests from Excel           | Same parse + POST flow as agent                                 |
 | Add custom labels                  | Dialog → POST `/api/events/:id/labels` → reflects in agent view |
 
-### Role Parity — Add/Edit Matrix
+### Role Parity — Snapshot
 
-| Capability                                    | Agent | Client         | UI Surface                                          | Backend Functional Parity                                                                    |
-| --------------------------------------------- | ----- | -------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Edit event invite/schedule content            | ✅    | ✅             | `EventSetup`, `ClientEventView`                     | `PATCH /api/events/:id` supports both with ownership/code checks                             |
-| Add/edit hotel bookings                       | ✅    | ✅             | `EventSetup` step 2                                 | `POST/PUT /api/events/:id/hotel-booking` supports both with event-scope checks               |
-| Add/edit travel options                       | ✅    | ✅             | `EventSetup` step 3                                 | `POST /api/events/:id/travel-options` supports both with event-scope checks                  |
-| Add custom labels                             | ✅    | ✅             | `EventDetails`, `EventSetup`, `ClientEventView`     | `POST /api/events/:eventId/labels` supports both with event-scope checks                     |
-| Edit labels (budget/name fields)              | ✅    | ✅             | `EventDetails`, `ClientEventView`                   | `PUT /api/labels/:id` supports both with event-scope checks                                  |
-| Add/edit perks                                | ✅    | ✅             | `EventDetails`, `ClientEventView`                   | `POST /api/events/:eventId/perks`, `PUT /api/perks/:id` support both with event-scope checks |
-| Edit label-perk inclusion/coverage            | ✅    | ✅             | `EventDetails`, `ClientEventView`                   | `PUT /api/labels/:labelId/perks/:perkId` supports both with event-scope checks               |
-| Guest add/import/update/delete                | ✅    | ✅             | `EventDetails`, `GuestImport`, `ClientEventView`    | Guest create/update/delete endpoints now enforce same event-scope role checks                |
-| Booking-level label inclusions (hotel/flight) | ✅    | ✅             | `EventSetup` (hotel + flight cards)                 | `GET/POST /api/events/:id/booking-label-inclusions` supports both with event-scope checks    |
-| Itinerary add/edit/delete                     | ✅    | ❌ (view only) | Agent `EventDetails` editor; client read-only cards | Intentionally agent-only (`/api/events/:eventId/itinerary*`)                                 |
+The authoritative role-permission matrix is maintained in [USER_FLOWS.md — Role Permission Matrix](./USER_FLOWS.md#role-permission-matrix-for-shared-modules).
+
+Below was a development snapshot kept for progress tracking. For all RBAC or permission changes, update `USER_FLOWS.md` (the canonical source) and then refresh this snapshot if needed.
+
+**Snapshot date:** March 1, 2026 — refer to `USER_FLOWS.md` for the live matrix.
 
 ### Guest Portal (4-Step Wizard)
 
@@ -126,6 +119,10 @@ All planned features implemented. Nomination logic intentionally dropped. See "D
 ---
 
 ## Tech Stack
+
+## Notes for future cleanup
+
+- `package-lock.json` contains an entry for `@vercel/postgres` originating from the initial commit. This is lockfile metadata only and does not affect runtime. We decided not to regenerate or remove the lockfile now to avoid broad dependency resolution changes. To clean later: remove `package-lock.json` and `node_modules`, run `npm install`, run smoke tests (`npm run smoke`), and commit the updated lockfile once validated.
 
 | Layer     | Tech                                                            |
 | --------- | --------------------------------------------------------------- |

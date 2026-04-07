@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2, Plane, Hotel, ArrowRight, AlertTriangle, Train, Bus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format, differenceInCalendarDays } from "date-fns";
+import { AvailabilityGate } from "@/components/AvailabilityGate";
 
 type TransportMode = "group_flight" | "own_flight" | "train" | "other" | "local";
 
@@ -284,6 +285,12 @@ export default function GuestTravelPrefs({ token }: { token: string }) {
 
   return (
     <GuestLayout step={2} token={token}>
+      <AvailabilityGate
+        isHotelFull={!!guestData.isHotelFull}
+        isFlightFull={!!guestData.isFlightFull}
+        step={2}
+        guestName={guestData.name}
+      >
       <div className="max-w-3xl mx-auto space-y-8">
         {/* Header */}
         <div className="text-center">
@@ -541,6 +548,7 @@ export default function GuestTravelPrefs({ token }: { token: string }) {
           </Button>
         </div>
       </div>
+      </AvailabilityGate>
     </GuestLayout>
   );
 }

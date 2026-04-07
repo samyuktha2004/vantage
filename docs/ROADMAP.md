@@ -71,6 +71,8 @@
 - [ ] TBO API Integration Guide
 - [ ] TBO API Setup & Credentials Guide
 
+**Permissions / RBAC:** The authoritative permissions table is maintained in [USER_FLOWS.md — Role Permission Matrix](./USER_FLOWS.md#role-permission-matrix-for-shared-modules). Roadmap items that affect roles (auth, ground team, client controls) should reference that matrix when describing access changes.
+
 ---
 
 ## V1 — Production Ready (Q2 2026)

@@ -19,65 +19,31 @@ Group travel for MICE (Meetings, Incentives, Conferences, Exhibitions) and desti
 
 ## 2. User Roles
 
+**RBAC source of truth:** Detailed permissions (who can do what) are maintained in [USER_FLOWS.md — Role Permission Matrix](./USER_FLOWS.md#role-permission-matrix-for-shared-modules). This PRD keeps role descriptions high-level to avoid duplicated permission logic across docs.
+
 ### 2.1 Travel Agent (TBO Partner)
 
 The primary operator of the platform. Creates and manages events end-to-end.
 
-**Capabilities:**
-
-- Create/edit/delete events (MICE conference or destination wedding)
-- Search TBO Hotel API → select hotel → block rooms at group rate
-- Search TBO Air API → select group flight → allocate seats per guest tier
-- Build label/perk matrix (VIP, Family, Staff, etc.)
-- Import guest lists via Excel/CSV or add manually
-- Generate unique secure guest access links (QR + URL)
-- Publish event → share microsite URL
-- Review and approve guest requests (perk upgrades, special services)
-- Monitor real-time inventory consumption dashboard
-- Create ground team accounts for on-site check-in staff
-- Download rooming lists and full event reports (Excel)
+**Primary responsibility:** Owns event setup, guest operations, approvals, inventory actions, and final reporting.
 
 ### 2.2 Client (Event Host)
 
 The corporate client or wedding family who commissioned the event.
 
-**Capabilities:**
-
-- Access event view via event code
-- Review published event details and guest list
-- Manage perk toggles per label (what's included vs. self-pay)
-- View booking status and guest confirmation counts
-- See cost breakdown of hosted inclusions
+**Primary responsibility:** Reviews event progress, controls host-side inclusions/cost decisions within allowed scope, and approves forwarded requests.
 
 ### 2.3 Ground Team (On-site Check-in Staff)
 
 Staff deployed at the event venue for day-of operations.
 
-**Capabilities:**
-
-- Sign in with agent-issued credentials (scoped to a specific event)
-- Search guests by name or booking ref
-- Scan QR code to verify guest identity
-- Mark guest as "arrived"
-- View dietary restrictions, special requests, room allocations
-- Access mobile-optimized rooming list
+**Primary responsibility:** Executes check-in and on-ground operations for one scoped event (operational actions only).
 
 ### 2.4 Guest (Attendee / Delegate / Wedding Guest)
 
 The end attendee. Accesses via a unique secure link — no account creation required.
 
-**Capabilities:**
-
-- Find invitation via booking reference (no login)
-- View confirmed travel details (read-only — set by agent)
-- RSVP and confirm seat allocation
-- Add family members for rooming
-- Select optional itinerary activities
-- Confirm included perks or contact agent for self-pay perks
-- Request bleisure extension (self-funded, connected to TBO hotel rates)
-- Upload identity document (passport/ID)
-- Request room upgrade
-- Toggle self-manage preference (opt out of group travel if preferred)
+**Primary responsibility:** Completes RSVP and travel-related self-service steps using a tokenized guest portal link.
 
 ---
 

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format, differenceInCalendarDays } from "date-fns";
+import { AvailabilityGate } from "@/components/AvailabilityGate";
 
 interface Perk {
   id: number;
@@ -245,6 +246,12 @@ export default function GuestAddOns({ token }: { token: string }) {
 
   return (
     <GuestLayout step={4} token={token}>
+      <AvailabilityGate
+        isHotelFull={!!guestData.isHotelFull}
+        isFlightFull={!!guestData.isFlightFull}
+        step={4}
+        guestName={guestData.name}
+      >
       <div className="max-w-3xl mx-auto space-y-8">
         {/* Header */}
         <div className="text-center">
@@ -455,6 +462,7 @@ export default function GuestAddOns({ token }: { token: string }) {
           </Button>
         </div>
       </div>
+      </AvailabilityGate>
     </GuestLayout>
   );
 }

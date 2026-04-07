@@ -10,6 +10,7 @@
     "build": "tsx script/build.ts",
     "start": "node dist/index.cjs",
     "check": "tsc",
+    "smoke": "bash scripts/smoke.sh",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {

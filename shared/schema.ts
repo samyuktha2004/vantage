@@ -97,14 +97,19 @@ export const bookingLabelInclusions = pgTable(
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
-  (table) => ({
-    bookingLabelUnique: uniqueIndex("booking_label_unique_idx").on(
-      table.bookingType,
-      table.bookingId,
-      table.labelId,
-    ),
-  }),
 );
+
+// Audit logs for admin actions and overrides
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  actorId: text("actor_id").references(() => users.id),
+  action: text("action").notNull(),
+  targetTable: text("target_table"),
+  targetId: integer("target_id"),
+  details: jsonb("details"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+ 
 
 // Flight/Train Schedules
 export const travelSchedules = pgTable("travel_schedules", {
@@ -234,10 +239,12 @@ export const guestRequests = pgTable("guest_requests", {
   id: serial("id").primaryKey(),
   guestId: integer("guest_id").notNull().references(() => guests.id),
   perkId: integer("perk_id").references(() => perks.id), // Optional, could be a general request
-  type: text("type").notNull(), // 'perk_request', 'custom'
+  type: text("type").notNull(), // 'perk_request', 'custom', 'extra_room'
   status: text("status").default("pending").notNull(), // pending, approved, rejected, forwarded_to_client
   notes: text("notes"),
-  addonType: text("addon_type"), // "room_upgrade" | "airport_transfer" | "extra_bed" | "early_checkin" | "late_checkout" | "return_flight" | "sightseeing" | "custom"
+  addonType: text("addon_type"), // "room_upgrade" | "extra_room" | "airport_transfer" | "extra_bed" | "early_checkin" | "late_checkout" | "return_flight" | "sightseeing" | "custom"
+  partialAcceptance: text("partial_acceptance"), // "keep_partial" | "wait_for_all" | "decline_if_incomplete" — guest's preference when only partial rooms can be fulfilled
+  roomsRequested: integer("rooms_requested"), // Number of additional rooms requested (for extra_room type)
   budgetConsumed: integer("budget_consumed").default(0), // Budget deducted from label.addOnBudget for this request
   createdAt: timestamp("created_at").defaultNow(),
 });
